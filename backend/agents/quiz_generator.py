@@ -1,7 +1,24 @@
 import json
 import re
+import os
 
-from core.llm import call_llm,LLMError
+from backend.core.llm import call_llm,LLMError
+
+
+QUIZ_API_KEY = os.getenv(
+    "QUIZ_OPENROUTER_API_KEY"
+)
+
+QUIZ_MODEL = os.getenv(
+    "QUIZ_MODEL",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
+)
+
+QUIZ_TEMPERATURE = float(
+    os.getenv("QUIZ_TEMPERATURE", "0.4")
+)
+
+
 
 SYSTEM_PROMPT = (
     "You are a quiz-generation engine for a study app. "
@@ -123,7 +140,13 @@ def generate_quiz(summary: str, key_topics: list, num_mcq: int = 3, num_short: i
     last_error = None
     for attempt in range(max_retries + 1):
         try:
-            raw_output = call_llm(prompt, system_prompt=SYSTEM_PROMPT, temperature=0.4)
+            raw_output = call_llm(
+                prompt=prompt,
+                system_prompt=SYSTEM_PROMPT,
+                temperature=QUIZ_TEMPERATURE,
+                api_key=QUIZ_API_KEY,
+                model=QUIZ_MODEL,
+            )
             parsed = _extract_json(raw_output)
             _validate_quiz_schema(parsed)
             return parsed

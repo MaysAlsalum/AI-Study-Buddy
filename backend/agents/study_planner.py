@@ -409,21 +409,33 @@ def _build_llm() -> ChatOpenAI:
     Raises:
         EnvironmentError: If the API key environment variable is missing.
     """
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get("PLANNER_OPENROUTER_API_KEY")
     if not api_key:
         raise EnvironmentError(
-            "OPENAI_API_KEY environment variable is not set. "
-            "Set it before starting the application."
+            "PLANNER_OPENROUTER_API_KEY is not set. "
+            "Check your .env file."
         )
 
-    base_url = os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1")
-    model = os.environ.get("LLM_MODEL", "google/gemini-2.5-flash")
+    base_url = os.environ.get(
+        "OPENROUTER_BASE_URL",
+        "https://openrouter.ai/api/v1",
+    )
+
+    model = os.environ.get(
+        "PLANNER_MODEL",
+        "google/gemini-2.5-flash",
+    )
+
+    temperature = float(
+        os.environ.get("PLANNER_TEMPERATURE", "0.3")
+    )
+
 
     return ChatOpenAI(
         model=model,
         openai_api_key=api_key,
         openai_api_base=base_url,
-        temperature=0.3,
+        temperature=temperature,
         max_tokens=4096,
         default_headers={
             "HTTP-Referer": "https://ai-study-buddy.app",
