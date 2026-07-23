@@ -24,6 +24,373 @@ from backend.core.llm import LLMError, call_llm
 from backend.core.state import StudyState
 
 
+import re
+from dataclasses import dataclass
+from typing import Pattern
+
+
+# Security and prompt injection detection
+MAX_INPUT_CHARACTERS = 5000
+SECURITY_BLOCK_SCORE = 6
+
+
+@dataclass(frozen=True)
+class AttackPattern:
+    name: str
+    regex: Pattern[str]
+    score: int
+    description: str
+
+
+ATTACK_PATTERNS = [
+    # Instruction override attempts
+    AttackPattern(
+        name="instruction_override",
+        regex=re.compile(
+            r"\b("
+            r"ignore|disregard|forget|override|bypass|cancel"
+            r")\b.{0,50}\b("
+            r"previous|prior|above|system|developer|original"
+            r")\b.{0,30}\b("
+            r"instructions?|prompts?|rules?|messages?"
+            r")\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        score=5,
+        description="Attempts to override previous or system instructions.",
+    ),
+
+    AttackPattern(
+        name="new_instruction_claim",
+        regex=re.compile(
+            r"\b("
+            r"these are your new instructions|"
+            r"follow my instructions instead|"
+            r"replace your instructions|"
+            r"new system prompt|"
+            r"updated developer message"
+            r")\b",
+            re.IGNORECASE,
+        ),
+        score=5,
+        description="Claims that the input contains new trusted instructions.",
+    ),
+
+    # Role hijacking
+    AttackPattern(
+        name="role_hijacking",
+        regex=re.compile(
+            r"\b("
+            r"act as|pretend to be|you are now|from now on|"
+            r"assume the role of|switch roles?|enter .* mode"
+            r")\b",
+            re.IGNORECASE,
+        ),
+        score=3,
+        description="Attempts to change the agent role or behavior.",
+    ),
+
+    AttackPattern(
+        name="jailbreak_language",
+        regex=re.compile(
+            r"\b("
+            r"jailbreak|developer mode|dan mode|unrestricted mode|"
+            r"god mode|evil mode|no restrictions?|without limitations?"
+            r")\b",
+            re.IGNORECASE,
+        ),
+        score=5,
+        description="Known jailbreak or unrestricted-mode language.",
+    ),
+
+    # Secret and prompt exfiltration
+    AttackPattern(
+        name="system_prompt_exfiltration",
+        regex=re.compile(
+            r"\b("
+            r"reveal|show|print|display|repeat|leak|expose|return"
+            r")\b.{0,50}\b("
+            r"system prompt|developer message|hidden instructions?|"
+            r"internal prompt|initial prompt|policy|configuration"
+            r")\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        score=6,
+        description="Attempts to reveal hidden prompts or internal instructions.",
+    ),
+
+    AttackPattern(
+        name="secret_exfiltration",
+        regex=re.compile(
+            r"\b("
+            r"reveal|show|print|send|return|extract|leak|expose"
+            r")\b.{0,50}\b("
+            r"api[_ -]?key|secret|token|password|credential|"
+            r"environment variable|\.env|authorization header"
+            r")\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        score=7,
+        description="Attempts to obtain secrets, credentials, or API keys.",
+    ),
+
+    # Tool and code execution attempts
+    AttackPattern(
+        name="tool_execution",
+        regex=re.compile(
+            r"\b("
+            r"execute|run|invoke|call|trigger|use"
+            r")\b.{0,40}\b("
+            r"shell|terminal|powershell|cmd|bash|python|tool|function|"
+            r"browser|api|database|filesystem"
+            r")\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        score=4,
+        description="Attempts to make the agent invoke tools or execute commands.",
+    ),
+
+    AttackPattern(
+        name="dangerous_shell_command",
+        regex=re.compile(
+            r"("
+            r"rm\s+-rf|"
+            r"del\s+/[fsq]|"
+            r"format\s+[a-z]:|"
+            r"shutdown\s+[-/]|"
+            r"curl\s+.+\|\s*(bash|sh)|"
+            r"wget\s+.+\|\s*(bash|sh)|"
+            r"powershell\s+.*-enc|"
+            r"invoke-expression|"
+            r"eval\s*\(|"
+            r"exec\s*\("
+            r")",
+            re.IGNORECASE,
+        ),
+        score=7,
+        description="Contains potentially dangerous execution commands.",
+    ),
+
+    # Data exfiltration and external requests
+    AttackPattern(
+        name="external_exfiltration",
+        regex=re.compile(
+            r"\b("
+            r"send|upload|post|forward|transmit|exfiltrate"
+            r")\b.{0,60}\b("
+            r"http[s]?://|webhook|server|endpoint|email|telegram|discord"
+            r")\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        score=6,
+        description="Attempts to transmit data to an external destination.",
+    ),
+
+    # Delimiter and context escape attacks
+    AttackPattern(
+        name="prompt_delimiter_escape",
+        regex=re.compile(
+            r"("
+            r"</?system>|"
+            r"</?assistant>|"
+            r"</?developer>|"
+            r"\[/?system\]|"
+            r"\[/?assistant\]|"
+            r"###\s*(system|developer|assistant)|"
+            r"BEGIN\s+(SYSTEM|DEVELOPER)\s+PROMPT|"
+            r"END\s+(SYSTEM|DEVELOPER)\s+PROMPT"
+            r")",
+            re.IGNORECASE,
+        ),
+        score=5,
+        description="Attempts to inject fake role or prompt delimiters.",
+    ),
+
+    AttackPattern(
+        name="conversation_forgery",
+        regex=re.compile(
+            r"\b("
+            r"system\s*:|developer\s*:|assistant\s*:|"
+            r"trusted instruction\s*:|administrator\s*:"
+            r")",
+            re.IGNORECASE,
+        ),
+        score=3,
+        description="Attempts to forge system, developer, or assistant messages.",
+    ),
+
+    # Output manipulation
+    AttackPattern(
+        name="output_override",
+        regex=re.compile(
+            r"\b("
+            r"do not summarize|instead of summarizing|"
+            r"output only|respond only with|return exactly|"
+            r"do not return json|ignore the required format"
+            r")\b",
+            re.IGNORECASE,
+        ),
+        score=4,
+        description="Attempts to replace the required summarization output.",
+    ),
+
+    # Hidden or encoded payloads
+    AttackPattern(
+        name="encoded_instruction",
+        regex=re.compile(
+            r"\b("
+            r"decode this|base64|rot13|hex encoded|unicode encoded|"
+            r"reverse the following|decrypt the following"
+            r")\b",
+            re.IGNORECASE,
+        ),
+        score=3,
+        description="May contain an encoded or obfuscated instruction.",
+    ),
+
+    AttackPattern(
+        name="base64_payload",
+        regex=re.compile(
+            r"\b[A-Za-z0-9+/]{100,}={0,2}\b"
+        ),
+        score=3,
+        description="Contains a long Base64-like payload.",
+    ),
+
+    # Recursive and indirect prompt injection
+    AttackPattern(
+        name="indirect_instruction",
+        regex=re.compile(
+            r"\b("
+            r"when an ai reads this|when the assistant sees this|"
+            r"instructions for the language model|"
+            r"message to the ai|note to the assistant|"
+            r"the model must|the assistant must"
+            r")\b",
+            re.IGNORECASE,
+        ),
+        score=5,
+        description="Contains instructions directed at an AI rather than study content.",
+    ),
+
+    # Security bypass language
+    AttackPattern(
+        name="security_bypass",
+        regex=re.compile(
+            r"\b("
+            r"disable security|disable validation|skip validation|"
+            r"bypass filters?|evade detection|avoid detection|"
+            r"ignore safety|remove restrictions?"
+            r")\b",
+            re.IGNORECASE,
+        ),
+        score=6,
+        description="Attempts to disable or bypass security controls.",
+    ),
+]
+
+
+
+
+def normalize_security_text(text: str) -> str:
+    """
+    Normalize text before applying security checks.
+    """
+
+    normalized = text.replace("\u200b", "")
+    normalized = normalized.replace("\u200c", "")
+    normalized = normalized.replace("\u200d", "")
+    normalized = normalized.replace("\ufeff", "")
+
+    normalized = re.sub(
+        r"\s+",
+        " ",
+        normalized,
+    )
+
+    return normalized.strip()
+
+
+
+
+
+def inspect_study_material(raw_text: str) -> dict:
+    """
+    Inspect study material for prompt injection and malicious patterns.
+
+    Returns:
+        A security report containing:
+        - blocked
+        - score
+        - detected_patterns
+        - security_reason
+    """
+
+    if not isinstance(raw_text, str):
+        raise ValueError(
+            "Study material must be a string."
+        )
+
+    cleaned_text = normalize_security_text(raw_text)
+
+    if not cleaned_text:
+        return {
+            "blocked": True,
+            "score": 10,
+            "detected_patterns": ["empty_input"],
+            "security_reason": "Study material is empty.",
+        }
+
+    if len(cleaned_text) > MAX_INPUT_CHARACTERS:
+        return {
+            "blocked": True,
+            "score": 10,
+            "detected_patterns": ["oversized_input"],
+            "security_reason": (
+                "Study material exceeds the maximum allowed size "
+                f"of {MAX_INPUT_CHARACTERS} characters."
+            ),
+        }
+
+    total_score = 0
+    detected_patterns = []
+    reasons = []
+
+    for attack_pattern in ATTACK_PATTERNS:
+        if attack_pattern.regex.search(cleaned_text):
+            total_score += attack_pattern.score
+
+            detected_patterns.append(
+                attack_pattern.name
+            )
+
+            reasons.append(
+                attack_pattern.description
+            )
+
+    blocked = total_score >= SECURITY_BLOCK_SCORE
+
+    if blocked:
+        security_reason = "; ".join(reasons)
+    elif detected_patterns:
+        security_reason = (
+            "Potentially suspicious content was detected, "
+            "but the blocking threshold was not reached."
+        )
+    else:
+        security_reason = ""
+
+    return {
+        "blocked": blocked,
+        "score": total_score,
+        "detected_patterns": detected_patterns,
+        "security_reason": security_reason,
+    }
+
+
+
+
+
 SUMMARIZER_API_KEY = os.getenv(
     "SUMMARIZER_OPENROUTER_API_KEY"
 )
@@ -309,6 +676,32 @@ def summarization_agent(state: StudyState) -> dict:
     try:
         study_text = _get_study_text(state)
 
+        security_report = inspect_study_material(
+            study_text
+        )
+
+        if security_report["blocked"]:
+            current_logs.append(
+                "Summarization Agent blocked the input: "
+                f"{security_report['security_reason']}"
+            )
+
+            return {
+                "blocked": True,
+                "security_reason": security_report[
+                    "security_reason"
+                ],
+                "security_score": security_report["score"],
+                "detected_attack_patterns": security_report[
+                    "detected_patterns"
+                ],
+                "execution_logs": current_logs,
+            }
+
+        current_logs.append(
+            "Study material passed security inspection."
+        )
+
         current_logs.append(
             "Study material text prepared."
         )
@@ -365,5 +758,14 @@ Study material:
                 and item["definition"].strip()
             )
         ],
+
+        # Security result for successful input
+        "blocked": False,
+        "security_reason": "",
+        "security_score": security_report["score"],
+        "detected_attack_patterns": security_report[
+            "detected_patterns"
+        ],
+
         "execution_logs": current_logs,
     }
