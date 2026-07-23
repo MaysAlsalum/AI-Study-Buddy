@@ -85,15 +85,20 @@ function Quiz({ quiz }) {
         <div key={i}>
           <div className="quiz-card">
             <span className="q-num">Question {i + 1}</span>
+            {q.type === 'short_answer' && (
+              <span className="q-type-badge">Short Answer</span>
+            )}
             <p className="q-text">{q.question}</p>
-            <div className="choices">
-              {q.choices.map((c, j) => (
-                <div key={j} className="choice">
-                  <span className="choice-letter">{String.fromCharCode(65 + j)}</span>
-                  <span className="choice-text">{c}</span>
-                </div>
-              ))}
-            </div>
+            {q.type !== 'short_answer' && Array.isArray(q.choices) && (
+              <div className="choices">
+                {q.choices.map((c, j) => (
+                  <div key={j} className="choice">
+                    <span className="choice-letter">{String.fromCharCode(65 + j)}</span>
+                    <span className="choice-text">{c}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="quiz-reveal-row">

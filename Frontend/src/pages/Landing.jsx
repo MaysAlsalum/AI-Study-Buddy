@@ -158,7 +158,7 @@ export default function Landing() {
                   <p>Faster concept review with AI summarization</p>
                 </div>
                 <div className="stat">
-                  <h3>5+</h3>
+                  <h3>3+</h3>
                   <p>Specialized AI agents working in coordination</p>
                 </div>
                 <div className="stat">
