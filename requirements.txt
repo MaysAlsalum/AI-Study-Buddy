@@ -4,3 +4,4 @@ langchain-openai
 requests
 python-dotenv
 streamlit>=1.32.0
+pypdf

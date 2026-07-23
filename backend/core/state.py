@@ -52,27 +52,34 @@ class StudyState(TypedDict):
     Shared state passed between all LangGraph agents.
     """
 
-    # ---------- User Input ----------
+    raw_text: str
+
+     # PDF input fields
+    pdf_path: str
+    pdf_bytes: bytes
+
+
+    # User Input 
 
     raw_text: str
     study_days: int
     difficulty: str
 
-    # ---------- Summarization Agent ----------
+    #  Summarization Agent
 
     summary: str
     key_topics: list[str]
     definitions: list[DefinitionItem]
 
-    # ---------- Quiz Generator Agent ----------
+    #  Quiz Generator Agent 
 
     quiz: list[QuizItem]
 
-    # ---------- Study Planner Agent ----------
+    #  Study Planner Agent 
 
     study_plan: list[StudyPlanItem]
 
-    # ---------- Security & Monitoring ----------
+    #  Security & Monitoring 
 
     blocked: bool
     security_reason: str
