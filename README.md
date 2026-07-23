@@ -48,7 +48,7 @@ AI Study Buddy follows a multi-agent workflow where each agent is responsible fo
    - Extracts important terms and their definitions.
 
 4. **Quiz Generation Agent**
-   - Uses the summary and extracted topics to generate multiple-choice questions.
+   - Uses the summary and extracted topics to generate multiple-choice & Short-Answer questions.
    - Produces explanations and correct answers for each question.
 
 5. **Study Planner Agent**
@@ -328,7 +328,7 @@ http://localhost:5173
 ---
 
 
-## 🎥 Demonstration
+##  Demonstration
 
 The project demonstration showcases the complete workflow of **AI Study Buddy**, including:
 
@@ -341,7 +341,35 @@ The project demonstration showcases the complete workflow of **AI Study Buddy**,
 - Generating a personalized study plan.
 - Displaying the final results through the frontend interface.
 
-### Demo Video
+
+## 📸 Sample Output
+
+### 🏠 Landing Page
+
+![Landing Page](docs/images/landing-page.png)
+
+---
+
+### 📝 Summary 
+
+![Summary Page](docs/images/summary-page1.png)
+
+![Definitions Page](docs/images/summary-page2.png)
+
+---
+
+### ❓ Quiz Generation
+
+![Quiz Page](docs/images/quiz-page.png)
+
+---
+
+### 📅 Personalized Study Plan
+
+![Study Plan Page](docs/images/study-plan-page.png)
+
+
+### 🎥 Demo Video
 
 📺 **Watch the full project demonstration here:**
 
