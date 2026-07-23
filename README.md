@@ -346,7 +346,7 @@ The project demonstration showcases the complete workflow of **AI Study Buddy**,
 📺 **Watch the full project demonstration here:**
 
 **Video Link:**  
-[https://your-demo-video-link](https://drive.google.com/file/d/1E2O8RU1x-PWE6K3EqqgKFLrUm8c6_Cxy/view?usp=sharing)
+[https://demo-video-link](https://drive.google.com/file/d/1E2O8RU1x-PWE6K3EqqgKFLrUm8c6_Cxy/view?usp=sharing)
 
 ---
 
