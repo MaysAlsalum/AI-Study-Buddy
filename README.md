@@ -346,27 +346,27 @@ The project demonstration showcases the complete workflow of **AI Study Buddy**,
 
 ### 🏠 Landing Page
 
-![Landing Page](docs/images/landing-page.png)
+![Landing Page](DEMO/images/landing-page.png)
 
 ---
 
 ### 📝 Summary 
 
-![Summary Page](docs/images/summary-page1.png)
+![Summary Page](DEMO/images/summary-page1.png)
 
-![Definitions Page](docs/images/summary-page2.png)
+![Definitions Page](DEMO/images/summary-page2.png)
 
 ---
 
 ### ❓ Quiz Generation
 
-![Quiz Page](docs/images/quiz-page.png)
+![Quiz Page](DEMO/images/quiz-page.png)
 
 ---
 
 ### 📅 Personalized Study Plan
 
-![Study Plan Page](docs/images/study-plan-page.png)
+![Study Plan Page](DEMO/images/study-plan-page.png)
 
 
 ### 🎥 Demo Video
