@@ -212,7 +212,7 @@ The frontend is built with **React and Vite**, providing a responsive and intera
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-username>/AI-Study-Buddy.git
+git clone https://github.com/MaysAlsalum/AI-Study-Buddy.git
 cd AI-Study-Buddy
 ```
 
