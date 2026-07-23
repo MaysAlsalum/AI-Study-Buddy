@@ -28,11 +28,11 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 # ==============================
-# Expose FastAPI Port
+# Expose frontend Port
 # ==============================
-EXPOSE 8080
+EXPOSE 5173
 
 # ==============================
-# Start FastAPI
+# Start frontend
 # ==============================
-CMD ["python", "-m", "backend.main"]
+CMD ["npm", "run", "dev", "--", "--host"]
