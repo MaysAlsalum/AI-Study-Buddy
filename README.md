@@ -9,7 +9,7 @@ An AI-powered multi-agent study assistant that helps students transform study ma
 | Member | GitHub | Contribution |
 |---------|---------|--------------|
 | Member 1 | @MaysAlsalum | Summarization Agent, Security Layer, LangGraph Workflow |
-| Member 2 | @RazanAlrashed | Quiz Generation Agent |
+| Member 2 | @RazanAlrashed | Quiz Generation Agent | Dockerization (Dockerfile & Container Setup(
 | Member 3 | @Rimas-Alhazmi | Study Planner Agent, Frontend Development & UI Integration |
 
 ---
